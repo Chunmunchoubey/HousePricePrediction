@@ -56,4 +56,3 @@ models/*.pkl
 mlruns/
 s3-read-policy.json
 tests/smoke_test_.ipynb
-notebooks/
