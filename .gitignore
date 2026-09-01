@@ -56,3 +56,6 @@ models/*.pkl
 mlruns/
 s3-read-policy.json
 tests/smoke_test_.ipynb
+# Local notebooks
+/notebooks/
+/tests/*.ipynb
