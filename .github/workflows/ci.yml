@@ -48,12 +48,12 @@ jobs:
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-           # Deploy to ECS - API
+      # Deploy to ECS - API
       - name: Deploy housing-api-service
         run: |
           aws ecs update-service \
             --cluster housing-api-cluster-ecs \
-            --service housing-api-service \
+            --service housing-api-task-service-r5g35fie \
             --force-new-deployment
 
       # Deploy to ECS - Streamlit
