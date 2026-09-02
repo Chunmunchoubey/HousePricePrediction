@@ -17,17 +17,18 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
       # Build and push housing-api image
       - name: Build, Tag, and Push housing-api
+        env:
+          ECR_REGISTRY: 471824291823.dkr.ecr.ap-south-1.amazonaws.com
+          ECR_REPOSITORY: housing-api
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          IMAGE_TAG=${GITHUB_SHA}
-          ECR_REGISTRY=261899902410.dkr.ecr.eu-west-2.amazonaws.com
-          ECR_REPOSITORY=housing-api
-
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f Dockerfile .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
@@ -36,11 +37,11 @@ jobs:
 
       # Build and push housing-streamlit image
       - name: Build, Tag, and Push housing-streamlit
+        env:
+          ECR_REGISTRY: 471824291823.dkr.ecr.ap-south-1.amazonaws.com
+          ECR_REPOSITORY: housing-streamlit
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          IMAGE_TAG=${GITHUB_SHA}
-          ECR_REGISTRY=261899902410.dkr.ecr.eu-west-2.amazonaws.com
-          ECR_REPOSITORY=housing-streamlit
-
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f Dockerfile.streamlit .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
