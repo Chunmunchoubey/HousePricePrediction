@@ -38,7 +38,7 @@
         },
         {
           "name": "API_URL",
-          "value": "http://3.7.250.62:8000/predict"
+          "value": "http://customer-churn-alb-1461029351.ap-south-1.elb.amazonaws.com:8000/predict"
         },
         {
           "name": "S3_BUCKET",
