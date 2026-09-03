@@ -13,8 +13,14 @@ from src.inference_pipeline.inference import predict
 # ----------------------------
 # Config
 # ----------------------------
-S3_BUCKET = os.getenv("S3_BUCKET", "housing-regression-data")
-REGION = os.getenv("AWS_REGION", "eu-west-2")
+S3_BUCKET = os.getenv(
+    "S3_BUCKET",
+    "housing-regression-data-chunmunchoubey-2026"
+)
+REGION = os.getenv(
+    "AWS_REGION",
+    "ap-south-1"
+)
 s3 = boto3.client("s3", region_name=REGION)
 
 # Ensures your app always has the latest model/data locally, 

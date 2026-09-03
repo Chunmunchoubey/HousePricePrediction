@@ -1,8 +1,8 @@
 {
   "family": "housing-streamlit",
   "networkMode": "awsvpc",
-  "executionRoleArn": "arn:aws:iam::261899902410:role/ecsTaskExecutionRole",
-  "taskRoleArn": "arn:aws:iam::261899902410:role/ecs_s3_access",
+  "executionRoleArn": "arn:aws:iam::471824291823:role/ecsTaskExecutionRole-customer-churn",
+  "taskRoleArn": "arn:aws:iam::471824291823:role/ecsTaskExecutionRole-customer-churn",
   "requiresCompatibilities": [
     "FARGATE"
   ],
@@ -11,7 +11,7 @@
   "containerDefinitions": [
     {
       "name": "housing-streamlit",
-      "image": "261899902410.dkr.ecr.eu-west-2.amazonaws.com/housing-streamlit:latest",
+      "image": "471824291823.dkr.ecr.ap-south-1.amazonaws.com/housing-streamlit:latest",
       "essential": true,
       "portMappings": [
         {
@@ -38,9 +38,25 @@
         },
         {
           "name": "API_URL",
-          "value": "http://housing-api-alb-945997111.eu-west-2.elb.amazonaws.com/predict"
+          "value": "http://customer-churn-alb-1461029351.ap-south-1.elb.amazonaws.com:8000/predict"
+        },
+        {
+          "name": "S3_BUCKET",
+          "value": "housing-regression-data-chunmunchoubey-2026"
+        },
+        {
+          "name": "AWS_REGION",
+          "value": "ap-south-1"
         }
-      ]
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/housing-streamlit",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
     }
   ]
 }

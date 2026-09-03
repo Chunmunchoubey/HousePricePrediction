@@ -1,0 +1,43 @@
+# Python environment
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Git and editor files
+.git/
+.github/
+.vscode/
+
+# Credentials and secrets
+.env
+.aws/
+*.pem
+credentials
+
+# Large/unnecessary files
+notebooks/
+*.ipynb
+mlruns/
+logs/
+data/raw/
+
+# Not needed by FastAPI
+data/processed/feature_engineered_holdout.csv
+data/processed/cleaning_holdout.csv
+
+# Tests
+tests/
+# Ignore all processed data except training schema file
+data/processed/*
+!data/processed/feature_engineered_train.csv
+
+# Prediction outputs
+predictions/
+data/predictions/
+data/processed/*.csv
+
+# Large generated files
+artifacts/
+outputs/
+

@@ -1,18 +1,56 @@
+import json
+import numpy as np
 import streamlit as st
 import pandas as pd
 import requests
 import plotly.express as px
 import boto3, os
 from pathlib import Path
+import math
+
+
+def sanitize_floats(obj):
+    if isinstance(obj, dict):
+        return {k: sanitize_floats(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [sanitize_floats(v) for v in obj]
+    elif isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    return obj
+
 
 # ============================
 # Config
 # ============================
 API_URL = os.environ.get("API_URL", "http://127.0.0.1:8000/predict")
-S3_BUCKET = os.getenv("S3_BUCKET", "housing-regression-data")
-REGION = os.getenv("AWS_REGION", "eu-west-2")
+S3_BUCKET = os.getenv(
+    "S3_BUCKET",
+    "housing-regression-data-chunmunchoubey-2026"
+)
+REGION = os.getenv(
+    "AWS_REGION",
+    "ap-south-1"
+)
+
 
 s3 = boto3.client("s3", region_name=REGION)
+
+
+def clean_payload(records):
+    payload_df = pd.DataFrame(records).copy()
+
+    # Target column prediction input mein nahi jaana chahiye
+    payload_df = payload_df.drop(columns=["price"], errors="ignore")
+
+    # NaN, +inf, -inf ko valid numeric values mein convert karein
+    payload_df = payload_df.replace([np.inf, -np.inf], np.nan)
+    payload_df = payload_df.fillna(0)
+
+    # Python JSON-compatible list of dictionaries return karein
+    return json.loads(payload_df.to_json(orient="records"))
+
 
 def load_from_s3(key, local_path):
     """Download from S3 if not already cached locally."""
@@ -23,6 +61,7 @@ def load_from_s3(key, local_path):
         s3.download_file(S3_BUCKET, key, str(local_path))
     return str(local_path)
 
+
 # Paths (ensure available locally by fetching from S3 if missing)
 HOLDOUT_ENGINEERED_PATH = load_from_s3(
     "processed/feature_engineered_holdout.csv",
@@ -32,6 +71,7 @@ HOLDOUT_META_PATH = load_from_s3(
     "processed/cleaning_holdout.csv",
     "data/processed/cleaning_holdout.csv"
 )
+
 
 # ============================
 # Data loading
@@ -56,16 +96,20 @@ def load_data():
 
     return fe, disp
 
+
 fe_df, disp_df = load_data()
+
 
 # ============================
 # UI
 # ============================
 st.title("🏠 Housing Price Prediction — Holdout Explorer")
 
+
 years = sorted(disp_df["year"].unique())
 months = list(range(1, 13))
 regions = ["All"] + sorted(disp_df["region"].dropna().unique())
+
 
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -74,6 +118,7 @@ with col2:
     month = st.selectbox("Select Month", months, index=0)
 with col3:
     region = st.selectbox("Select Region", regions, index=0)
+
 
 if st.button("Show Predictions 🚀"):
     mask = (disp_df["year"] == year) & (disp_df["month"] == month)
@@ -87,12 +132,13 @@ if st.button("Show Predictions 🚀"):
     else:
         st.write(f"📅 Running predictions for **{year}-{month:02d}** | Region: **{region}**")
 
-        payload = fe_df.loc[idx].to_dict(orient="records")
+        payload = clean_payload(fe_df.loc[idx].to_dict(orient="records"))
 
         try:
             resp = requests.post(API_URL, json=payload, timeout=60)
             resp.raise_for_status()
             out = resp.json()
+            out = sanitize_floats(out)  # ← Added
             preds = out.get("predictions", [])
             actuals = out.get("actuals", None)
 
@@ -128,22 +174,30 @@ if st.button("Show Predictions 🚀"):
             if region == "All":
                 yearly_data = disp_df[disp_df["year"] == year].copy()
                 idx_all = yearly_data.index
-                payload_all = fe_df.loc[idx_all].to_dict(orient="records")
+                payload_all = clean_payload(
+                    fe_df.loc[idx_all].to_dict(orient="records")
+                )
 
                 resp_all = requests.post(API_URL, json=payload_all, timeout=60)
                 resp_all.raise_for_status()
-                preds_all = resp_all.json().get("predictions", [])
+                out_all = resp_all.json()
+                out_all = sanitize_floats(out_all)  # ← Added
+                preds_all = out_all.get("predictions", [])
 
                 yearly_data["prediction"] = pd.Series(preds_all, index=yearly_data.index).astype(float)
 
             else:
                 yearly_data = disp_df[(disp_df["year"] == year) & (disp_df["region"] == region)].copy()
                 idx_region = yearly_data.index
-                payload_region = fe_df.loc[idx_region].to_dict(orient="records")
+                payload_region = clean_payload(
+                    fe_df.loc[idx_region].to_dict(orient="records")
+                )
 
                 resp_region = requests.post(API_URL, json=payload_region, timeout=60)
                 resp_region.raise_for_status()
-                preds_region = resp_region.json().get("predictions", [])
+                out_region = resp_region.json()
+                out_region = sanitize_floats(out_region)  # ← Added
+                preds_region = out_region.get("predictions", [])
 
                 yearly_data["prediction"] = pd.Series(preds_region, index=yearly_data.index).astype(float)
 
