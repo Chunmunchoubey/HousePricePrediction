@@ -6,9 +6,26 @@ from pathlib import Path               # For handling file paths cleanly
 from typing import List, Dict, Any     # For type hints (clarity in endpoints)
 import pandas as pd                    # To handle incoming JSON as DataFrames
 import boto3, os                       # AWS SDK for Python + env variables
+import math
 
 # Import inference pipeline
 from src.inference_pipeline.inference import predict
+
+
+# ----------------------------
+# Sanitize NaN/Inf
+# ----------------------------
+def sanitize_floats(obj):
+    if isinstance(obj, dict):
+        return {k: sanitize_floats(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [sanitize_floats(v) for v in obj]
+    elif isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    return obj
+
 
 # ----------------------------
 # Config
@@ -23,6 +40,7 @@ REGION = os.getenv(
 )
 s3 = boto3.client("s3", region_name=REGION)
 
+
 # Ensures your app always has the latest model/data locally, 
 # but avoids re-downloading every time it starts.
 def load_from_s3(key, local_path):
@@ -34,12 +52,14 @@ def load_from_s3(key, local_path):
         s3.download_file(S3_BUCKET, key, str(local_path))
     return str(local_path)
 
+
 # ----------------------------
 # Paths
 # ----------------------------
 # Downloads model + training features from S3 if not cached.
 MODEL_PATH = Path(load_from_s3("models/xgb_best_model.pkl", "models/xgb_best_model.pkl"))
 TRAIN_FE_PATH = Path(load_from_s3("processed/feature_engineered_train.csv", "data/processed/feature_engineered_train.csv"))
+
 
 # Load expected training features for alignment
 if TRAIN_FE_PATH.exists():
@@ -48,16 +68,19 @@ if TRAIN_FE_PATH.exists():
 else:
     TRAIN_FEATURE_COLUMNS = None
 
+
 # ----------------------------
 # App
 # ----------------------------
 # Instantiates the FastAPI app.
 app = FastAPI(title="Housing Regression API")
 
+
 # / → simple landing endpoint to confirm API is alive.
 @app.get("/")
 def root():
     return {"message": "Housing Regression API is running 🚀"}
+
 
 # /health → checks if model exists, returns status info (like expected feature count).
 @app.get("/health")
@@ -71,6 +94,7 @@ def health():
         if TRAIN_FEATURE_COLUMNS:
             status["n_features_expected"] = len(TRAIN_FEATURE_COLUMNS)
     return status
+
 
 # Prediction Endpoint: This is the core ML serving endpoint.
 @app.post("/predict")
@@ -88,10 +112,15 @@ def predict_batch(data: List[dict]):
     if "actual_price" in preds_df.columns:
         resp["actuals"] = preds_df["actual_price"].astype(float).tolist()
 
+    # Sanitize NaN/Inf before returning
+    resp = sanitize_floats(resp)
+
     return resp
+
 
 # Batch runner
 from src.batch.run_monthly import run_monthly_predictions
+
 
 # Trigger a monthly batch job via API.
 @app.post("/run_batch")
@@ -102,6 +131,7 @@ def run_batch():
         "rows_predicted": int(len(preds)),
         "output_dir": "data/predictions/"
     }
+
 
 # Returns a preview of the most recent batch predictions.
 @app.get("/latest_predictions")
@@ -122,6 +152,7 @@ def latest_predictions(limit: int = 5):
 
 """
 🔹 Execution Order / Module Flow
+
 
 1. Imports (FastAPI, pandas, boto3, your inference function).
 2. Config setup (env vars → bucket/region).

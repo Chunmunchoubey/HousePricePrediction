@@ -1,0 +1,88 @@
+{
+    "taskDefinition": {
+        "taskDefinitionArn": "arn:aws:ecs:ap-south-1:471824291823:task-definition/housing-api-task:2",
+        "containerDefinitions": [
+            {
+                "name": "housing-api",
+                "image": "471824291823.dkr.ecr.ap-south-1.amazonaws.com/housing-api:latest",
+                "cpu": 0,
+                "portMappings": [
+                    {
+                        "containerPort": 8000,
+                        "hostPort": 8000,
+                        "protocol": "tcp"
+                    }
+                ],
+                "essential": true,
+                "environment": [
+                    {
+                        "name": "S3_BUCKET",
+                        "value": "housing-regression-data-chunmunchoubey-2026"
+                    },
+                    {
+                        "name": "AWS_REGION",
+                        "value": "ap-south-1"
+                    }
+                ],
+                "mountPoints": [],
+                "volumesFrom": [],
+                "logConfiguration": {
+                    "logDriver": "awslogs",
+                    "options": {
+                        "awslogs-group": "/ecs/housing-api-task",
+                        "awslogs-region": "ap-south-1",
+                        "awslogs-stream-prefix": "ecs"
+                    }
+                },
+                "systemControls": []
+            }
+        ],
+        "family": "housing-api-task",
+        "taskRoleArn": "arn:aws:iam::471824291823:role/ecsTaskExecutionRole-customer-churn",
+        "executionRoleArn": "arn:aws:iam::471824291823:role/ecsTaskExecutionRole-customer-churn",
+        "networkMode": "awsvpc",
+        "revision": 2,
+        "volumes": [],
+        "status": "ACTIVE",
+        "requiresAttributes": [
+            {
+                "name": "com.amazonaws.ecs.capability.logging-driver.awslogs"
+            },
+            {
+                "name": "ecs.capability.execution-role-awslogs"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.ecr-auth"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.docker-remote-api.1.19"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.task-iam-role"
+            },
+            {
+                "name": "ecs.capability.execution-role-ecr-pull"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.docker-remote-api.1.18"
+            },
+            {
+                "name": "ecs.capability.task-eni"
+            }
+        ],
+        "placementConstraints": [],
+        "compatibilities": [
+            "EC2",
+            "MANAGED_INSTANCES",
+            "FARGATE"
+        ],
+        "requiresCompatibilities": [
+            "FARGATE"
+        ],
+        "cpu": "1024",
+        "memory": "3072",
+        "registeredAt": "2026-08-30T00:52:57.849000+05:30",
+        "registeredBy": "arn:aws:iam::471824291823:user/house-price-local-deployer"
+    },
+    "tags": []
+}
