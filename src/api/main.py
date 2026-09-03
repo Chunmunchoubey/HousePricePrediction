@@ -5,6 +5,7 @@ import pandas as pd                    # To handle incoming JSON as DataFrames
 import boto3, os                       # AWS SDK for Python + env variables
 import math
 import traceback
+from joblib import load as _load_model
 
 # Import inference pipeline
 from src.inference_pipeline.inference import predict
@@ -54,19 +55,14 @@ def load_from_s3(key, local_path):
 # ----------------------------
 # Downloads model + training features from S3 if not cached.
 MODEL_PATH = Path(load_from_s3("models/xgb_best_model.pkl", "models/xgb_best_model.pkl"))
-TRAIN_FE_PATH = Path(load_from_s3("processed/feature_engineered_train.csv", "data/processed/feature_engineered_train.csv"))
+
+# Load expected training features for alignment (from model directly)
+_model_for_schema = _load_model(MODEL_PATH)
+TRAIN_FEATURE_COLUMNS = list(_model_for_schema.get_booster().feature_names)
 
 # Download encoders
 FREQ_ENCODER_PATH = Path(load_from_s3("models/freq_encoder.json", "models/freq_encoder.json"))
 TARGET_ENCODER_PATH = Path(load_from_s3("models/target_encoder.pkl", "models/target_encoder.pkl"))
-
-
-# Load expected training features for alignment
-if TRAIN_FE_PATH.exists():
-    _train_cols = pd.read_csv(TRAIN_FE_PATH, nrows=1)
-    TRAIN_FEATURE_COLUMNS = [c for c in _train_cols.columns if c != "price"]
-else:
-    TRAIN_FEATURE_COLUMNS = None
 
 
 # ----------------------------
