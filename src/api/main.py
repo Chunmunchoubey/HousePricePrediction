@@ -1,12 +1,10 @@
-# Goal: Create a FastAPI app to serve your trained ML model into a web service that anyone 
-# (or any system) can call over HTTP.
-
 from fastapi import FastAPI            # Web framework for APIs
 from pathlib import Path               # For handling file paths cleanly
 from typing import List, Dict, Any     # For type hints (clarity in endpoints)
 import pandas as pd                    # To handle incoming JSON as DataFrames
 import boto3, os                       # AWS SDK for Python + env variables
 import math
+import traceback
 
 # Import inference pipeline
 from src.inference_pipeline.inference import predict
@@ -18,12 +16,10 @@ from src.inference_pipeline.inference import predict
 def sanitize_floats(obj):
     if isinstance(obj, dict):
         return {k: sanitize_floats(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
+    if isinstance(obj, list):
         return [sanitize_floats(v) for v in obj]
-    elif isinstance(obj, float):
-        if math.isnan(obj) or math.isinf(obj):
-            return None
-        return obj
+    if isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
+        return None
     return obj
 
 
@@ -59,6 +55,10 @@ def load_from_s3(key, local_path):
 # Downloads model + training features from S3 if not cached.
 MODEL_PATH = Path(load_from_s3("models/xgb_best_model.pkl", "models/xgb_best_model.pkl"))
 TRAIN_FE_PATH = Path(load_from_s3("processed/feature_engineered_train.csv", "data/processed/feature_engineered_train.csv"))
+
+# Download encoders
+FREQ_ENCODER_PATH = Path(load_from_s3("models/freq_encoder.json", "models/freq_encoder.json"))
+TARGET_ENCODER_PATH = Path(load_from_s3("models/target_encoder.pkl", "models/target_encoder.pkl"))
 
 
 # Load expected training features for alignment
@@ -99,23 +99,29 @@ def health():
 # Prediction Endpoint: This is the core ML serving endpoint.
 @app.post("/predict")
 def predict_batch(data: List[dict]):
-    if not MODEL_PATH.exists():
-        return {"error": f"Model not found at {str(MODEL_PATH)}"}
+    try:
+        if not MODEL_PATH.exists():
+            return {"error": f"Model not found at {str(MODEL_PATH)}"}
 
-    df = pd.DataFrame(data)
-    if df.empty:
-        return {"error": "No data provided"}
+        df = pd.DataFrame(data)
+        if df.empty:
+            return {"error": "No data provided"}
 
-    preds_df = predict(df, model_path=MODEL_PATH)
+        preds_df = predict(
+            df,
+            model_path=MODEL_PATH,
+            freq_encoder_path=FREQ_ENCODER_PATH,
+            target_encoder_path=TARGET_ENCODER_PATH,
+        )
 
-    resp = {"predictions": preds_df["predicted_price"].astype(float).tolist()}
-    if "actual_price" in preds_df.columns:
-        resp["actuals"] = preds_df["actual_price"].astype(float).tolist()
+        resp = {"predictions": preds_df["predicted_price"].astype(float).tolist()}
+        if "actual_price" in preds_df.columns:
+            resp["actuals"] = preds_df["actual_price"].astype(float).tolist()
 
-    # Sanitize NaN/Inf before returning
-    resp = sanitize_floats(resp)
+        return sanitize_floats(resp)
 
-    return resp
+    except Exception as e:
+        return {"error": str(e), "traceback": traceback.format_exc()}
 
 
 # Batch runner
@@ -148,17 +154,3 @@ def latest_predictions(limit: int = 5):
         "rows": int(len(df)),
         "preview": df.head(limit).to_dict(orient="records")
     }
-
-
-"""
-🔹 Execution Order / Module Flow
-
-
-1. Imports (FastAPI, pandas, boto3, your inference function).
-2. Config setup (env vars → bucket/region).
-3. S3 utility (load_from_s3).
-4. Download + load model/artifacts (MODEL_PATH, TRAIN_FE_PATH).
-5. Infer schema (TRAIN_FEATURE_COLUMNS).
-6. Create FastAPI app (app = FastAPI).
-7. Declare endpoints (/, /health, /predict, /run_batch, /latest_predictions).
-"""
